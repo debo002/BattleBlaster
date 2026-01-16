@@ -1,0 +1,41 @@
+﻿# Unreal Engine .gitignore
+
+# Compiled binaries
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+
+# Build files
+*.sln
+*.sln.DotSettings.user
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+# IDE files
+.vs/
+.vscode/
+.idea/
+*.code-workspace
+
+# Debug files
+*.pdb
+*.log
+*.uba
+
+# Temporary files
+*.tmp
+build_output.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Keep these
+!Source/**
+!Config/**
+!Content/**
+!*.uproject
+!README.md
+!.gitignore
