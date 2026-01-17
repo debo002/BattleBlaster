@@ -69,4 +69,5 @@ private:
 	float GetDistanceToPlayer() const;
 	bool IsPlayerInRange(float Range) const;
 	bool IsFacingPlayer() const;
+	bool HasLineOfSight() const; // Check if player is visible (no walls blocking)
 };

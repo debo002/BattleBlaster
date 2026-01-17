@@ -44,4 +44,5 @@ private:
 
 	void TryFire();
 	bool IsInRange() const;
+	bool HasLineOfSight() const; // Check if player is visible (no walls blocking)
 };

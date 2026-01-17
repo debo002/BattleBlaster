@@ -1,6 +1,8 @@
 ﻿// AITank.cpp
 #include "AITank.h"
 #include "Tank.h"
+#include "AIController.h"
+#include "NavigationPath.h"
 
 AAITank::AAITank()
 {
@@ -62,7 +64,12 @@ void AAITank::UpdateBehavior(float DeltaTime)
 
 	if (bPlayerInSight)
 	{
-		UpdateAiming(DeltaTime);
+		// Only aim if we can actually see the player (no walls blocking)
+		if (HasLineOfSight())
+		{
+			UpdateAiming(DeltaTime);
+		}
+		
 		UpdateMovement(DeltaTime);
 	}
 }
@@ -71,34 +78,35 @@ void AAITank::UpdateMovement(float DeltaTime)
 {
 	if (!PlayerTank) return;
 
+	AAIController* AIController = Cast<AAIController>(GetController());
+	if (!AIController) return;
+
 	const float Dist = GetDistanceToPlayer();
 	const float Error = Dist - PreferredDistance;
 
-	// Within tolerance - hold position
-	if (FMath::Abs(Error) <= DistanceTolerance) return;
+	// Within tolerance - stop moving
+	if (FMath::Abs(Error) <= DistanceTolerance)
+	{
+		AIController->StopMovement();
+		return;
+	}
 
-	// Direction: toward player if too far, away if too close
-	FVector Dir;
+	// Determine target location based on distance
+	FVector TargetLocation;
 	if (Error > 0.0f)
 	{
-		Dir = (PlayerTank->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+		// Too far - move toward player
+		TargetLocation = PlayerTank->GetActorLocation();
 	}
 	else
 	{
-		Dir = (GetActorLocation() - PlayerTank->GetActorLocation()).GetSafeNormal();
+		// Too close - move away from player
+		FVector AwayDir = (GetActorLocation() - PlayerTank->GetActorLocation()).GetSafeNormal();
+		TargetLocation = GetActorLocation() + (AwayDir * 500.0f); // Move 500 units away
 	}
-	Dir.Z = 0.0f;
-	Dir.Normalize();
 
-	// Move with collision sweep
-	const FVector Delta = Dir * MoveSpeed * DeltaTime;
-	FHitResult Hit;
-	AddActorWorldOffset(Delta, true, &Hit);
-
-	// Rotate body toward movement
-	const FRotator TargetRot = Dir.Rotation();
-	const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), TargetRot, DeltaTime, 2.0f);
-	SetActorRotation(FRotator(0.0f, NewRot.Yaw, 0.0f));
+	// Use AI pathfinding to navigate around obstacles
+	AIController->MoveToLocation(TargetLocation, DistanceTolerance);
 }
 
 void AAITank::UpdateAiming(float DeltaTime)
@@ -113,6 +121,7 @@ void AAITank::TryFire()
 	if (!bIsEnabled || !PlayerTank || !bPlayerInSight) return;
 	if (!IsPlayerInRange(FireRange)) return;
 	if (!IsFacingPlayer()) return;
+	if (!HasLineOfSight()) return; // Don't shoot through walls
 
 	Fire();
 }
@@ -145,3 +154,31 @@ bool AAITank::IsFacingPlayer() const
 
 	return Angle <= AimAccuracyThreshold;
 }
+
+bool AAITank::HasLineOfSight() const
+{
+	if (!PlayerTank) return false;
+
+	// Line trace from turret to player
+	FVector Start = GetActorLocation();
+	Start.Z += 50.0f; // Offset up from base
+	FVector End = PlayerTank->GetActorLocation();
+
+	FHitResult Hit;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+	Params.AddIgnoredActor(PlayerTank);
+
+	// Trace for blocking objects (walls, obstacles)
+	GetWorld()->LineTraceSingleByChannel(
+		Hit,
+		Start,
+		End,
+		ECC_Visibility,
+		Params
+	);
+
+	// If nothing hit, we have clear line of sight
+	return !Hit.bBlockingHit;
+}
+
