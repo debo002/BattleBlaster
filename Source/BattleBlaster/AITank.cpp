@@ -45,12 +45,6 @@ void AAITank::Tick(float DeltaTime)
 void AAITank::SetAIEnabled(bool bEnabled)
 {
 	bIsEnabled = bEnabled;
-	
-	// Debug: Log when AI is enabled
-	if (bEnabled)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("AI Tank %s ENABLED"), *GetName());
-	}
 }
 
 void AAITank::HandleDestruction()
@@ -83,11 +77,7 @@ void AAITank::UpdateBehavior(float DeltaTime)
 
 void AAITank::UpdateMovement(float DeltaTime)
 {
-	if (!PlayerTank)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("AI Tank %s: No PlayerTank reference!"), *GetName());
-		return;
-	}
+	if (!PlayerTank) return;
 
 	const float Dist = GetDistanceToPlayer();
 	const float Error = Dist - PreferredDistance;
@@ -107,75 +97,85 @@ void AAITank::UpdateMovement(float DeltaTime)
 	}
 	else
 	{
-		// Too close - move away from player (find position behind us)
+		// Too close - move away from player
 		FVector AwayDir = (GetActorLocation() - PlayerTank->GetActorLocation()).GetSafeNormal();
-		TargetLocation = GetActorLocation() + (AwayDir * 500.0f);
+		TargetLocation = GetActorLocation() + (AwayDir * 400.0f);
 	}
 
-	// Use Navigation System to find a path
+	// Try Navigation System pathfinding first
 	UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
-	if (!NavSys)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("AI Tank %s: No Navigation System found!"), *GetName());
-		return;
-	}
-
-	// Find a navigable path to target
-	FNavLocation NavLocation;
-	if (!NavSys->ProjectPointToNavigation(TargetLocation, NavLocation, FVector(500.0f, 500.0f, 500.0f)))
-	{
-		// Can't find valid navigation point near target
-		UE_LOG(LogTemp, Warning, TEXT("AI Tank %s: Cannot find valid nav point near target!"), *GetName());
-		return;
-	}
-
-	// Calculate path using navigation system
-	FPathFindingQuery Query;
-	Query.StartLocation = GetActorLocation();
-	Query.EndLocation = NavLocation.Location;
-	Query.NavData = NavSys->GetDefaultNavDataInstance();
-
-	FPathFindingResult PathResult = NavSys->FindPathSync(Query);
+	bool bUsedPathfinding = false;
 	
-	if (!PathResult.IsSuccessful() || !PathResult.Path.IsValid())
+	if (NavSys)
 	{
-		// No valid path found - try direct movement as fallback
+		FNavLocation NavLocation;
+		if (NavSys->ProjectPointToNavigation(TargetLocation, NavLocation, FVector(500.0f, 500.0f, 200.0f)))
+		{
+			FPathFindingQuery Query;
+			Query.StartLocation = GetActorLocation();
+			Query.EndLocation = NavLocation.Location;
+			Query.NavData = NavSys->GetDefaultNavDataInstance();
+
+			FPathFindingResult PathResult = NavSys->FindPathSync(Query);
+			
+			if (PathResult.IsSuccessful() && PathResult.Path.IsValid())
+			{
+				const TArray<FNavPathPoint>& PathPoints = PathResult.Path->GetPathPoints();
+				if (PathPoints.Num() >= 2)
+				{
+					// Move toward next waypoint
+					FVector NextWaypoint = PathPoints[1].Location;
+					FVector Dir = (NextWaypoint - GetActorLocation()).GetSafeNormal();
+					Dir.Z = 0.0f;
+					Dir.Normalize();
+
+					const FVector Delta = Dir * MoveSpeed * DeltaTime;
+					AddActorWorldOffset(Delta, true);
+
+					// Rotate toward movement
+					const FRotator TargetRot = Dir.Rotation();
+					const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), TargetRot, DeltaTime, 3.0f);
+					SetActorRotation(FRotator(0.0f, NewRot.Yaw, 0.0f));
+					
+					bUsedPathfinding = true;
+				}
+			}
+		}
+	}
+
+	// Fallback: Direct movement with obstacle avoidance
+	if (!bUsedPathfinding)
+	{
 		FVector Dir = (TargetLocation - GetActorLocation()).GetSafeNormal();
 		Dir.Z = 0.0f;
 		Dir.Normalize();
 
+		// Try forward movement
 		const FVector Delta = Dir * MoveSpeed * DeltaTime;
 		FHitResult Hit;
 		AddActorWorldOffset(Delta, true, &Hit);
 
-		// Rotate toward movement
+		// If blocked, try to slide around obstacle
+		if (Hit.bBlockingHit)
+		{
+			// Try sliding left
+			FVector LeftDir = FVector::CrossProduct(Dir, FVector::UpVector);
+			FHitResult LeftHit;
+			AddActorWorldOffset(LeftDir * MoveSpeed * 0.7f * DeltaTime, true, &LeftHit);
+
+			// If left blocked, try right
+			if (LeftHit.bBlockingHit)
+			{
+				FVector RightDir = -LeftDir;
+				AddActorWorldOffset(RightDir * MoveSpeed * 0.7f * DeltaTime, true);
+			}
+		}
+
+		// Rotate toward intended direction
 		const FRotator TargetRot = Dir.Rotation();
-		SetActorRotation(FRotator(0.0f, TargetRot.Yaw, 0.0f));
-		return;
+		const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), TargetRot, DeltaTime, 3.0f);
+		SetActorRotation(FRotator(0.0f, NewRot.Yaw, 0.0f));
 	}
-
-	// Get next point in path
-	const TArray<FNavPathPoint>& PathPoints = PathResult.Path->GetPathPoints();
-	if (PathPoints.Num() < 2)
-	{
-		return;
-	}
-
-	// Move toward next waypoint in path (skip first point as it's our current location)
-	FVector NextWaypoint = PathPoints[1].Location;
-	FVector Dir = (NextWaypoint - GetActorLocation()).GetSafeNormal();
-	Dir.Z = 0.0f;
-	Dir.Normalize();
-
-	// Apply movement
-	const FVector Delta = Dir * MoveSpeed * DeltaTime;
-	FHitResult Hit;
-	AddActorWorldOffset(Delta, true, &Hit);
-
-	// Rotate body toward movement direction smoothly
-	const FRotator TargetRot = Dir.Rotation();
-	const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), TargetRot, DeltaTime, 3.0f);
-	SetActorRotation(FRotator(0.0f, NewRot.Yaw, 0.0f));
 }
 
 void AAITank::UpdateAiming(float DeltaTime)
