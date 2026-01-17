@@ -1,4 +1,4 @@
-﻿# Unreal Engine .gitignore
+﻿﻿# Unreal Engine .gitignore
 
 # Compiled binaries
 Binaries/
@@ -27,6 +27,10 @@ Saved/
 # Temporary files
 *.tmp
 build_output.txt
+
+# Test/review documents
+FINAL_REVIEW_REPORT.md
+QUICK_START_GUIDE.md
 
 # OS files
 .DS_Store
