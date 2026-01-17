@@ -2,6 +2,7 @@
 #include "AITank.h"
 #include "Tank.h"
 #include "AIController.h"
+#include "NavigationSystem.h"
 #include "NavigationPath.h"
 
 AAITank::AAITank()
@@ -91,54 +92,89 @@ void AAITank::UpdateMovement(float DeltaTime)
 	const float Dist = GetDistanceToPlayer();
 	const float Error = Dist - PreferredDistance;
 
-	// Debug log every 2 seconds
-	static float DebugTimer = 0.0f;
-	DebugTimer += DeltaTime;
-	if (DebugTimer >= 2.0f)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("AI Tank %s: Distance=%.1f, PreferredDist=%.1f, Error=%.1f, Tolerance=%.1f, MoveSpeed=%.1f"),
-			*GetName(), Dist, PreferredDistance, Error, DistanceTolerance, MoveSpeed);
-		DebugTimer = 0.0f;
-	}
-
 	// Within tolerance - hold position
 	if (FMath::Abs(Error) <= DistanceTolerance)
 	{
 		return;
 	}
 
-	// Calculate movement direction
-	FVector Dir;
+	// Determine target location
+	FVector TargetLocation;
 	if (Error > 0.0f)
 	{
 		// Too far - move toward player
-		Dir = (PlayerTank->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+		TargetLocation = PlayerTank->GetActorLocation();
 	}
 	else
 	{
-		// Too close - move away from player
-		Dir = (GetActorLocation() - PlayerTank->GetActorLocation()).GetSafeNormal();
+		// Too close - move away from player (find position behind us)
+		FVector AwayDir = (GetActorLocation() - PlayerTank->GetActorLocation()).GetSafeNormal();
+		TargetLocation = GetActorLocation() + (AwayDir * 500.0f);
 	}
+
+	// Use Navigation System to find a path
+	UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
+	if (!NavSys)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("AI Tank %s: No Navigation System found!"), *GetName());
+		return;
+	}
+
+	// Find a navigable path to target
+	FNavLocation NavLocation;
+	if (!NavSys->ProjectPointToNavigation(TargetLocation, NavLocation, FVector(500.0f, 500.0f, 500.0f)))
+	{
+		// Can't find valid navigation point near target
+		UE_LOG(LogTemp, Warning, TEXT("AI Tank %s: Cannot find valid nav point near target!"), *GetName());
+		return;
+	}
+
+	// Calculate path using navigation system
+	FPathFindingQuery Query;
+	Query.StartLocation = GetActorLocation();
+	Query.EndLocation = NavLocation.Location;
+	Query.NavData = NavSys->GetDefaultNavDataInstance();
+
+	FPathFindingResult PathResult = NavSys->FindPathSync(Query);
+	
+	if (!PathResult.IsSuccessful() || !PathResult.Path.IsValid())
+	{
+		// No valid path found - try direct movement as fallback
+		FVector Dir = (TargetLocation - GetActorLocation()).GetSafeNormal();
+		Dir.Z = 0.0f;
+		Dir.Normalize();
+
+		const FVector Delta = Dir * MoveSpeed * DeltaTime;
+		FHitResult Hit;
+		AddActorWorldOffset(Delta, true, &Hit);
+
+		// Rotate toward movement
+		const FRotator TargetRot = Dir.Rotation();
+		SetActorRotation(FRotator(0.0f, TargetRot.Yaw, 0.0f));
+		return;
+	}
+
+	// Get next point in path
+	const TArray<FNavPathPoint>& PathPoints = PathResult.Path->GetPathPoints();
+	if (PathPoints.Num() < 2)
+	{
+		return;
+	}
+
+	// Move toward next waypoint in path (skip first point as it's our current location)
+	FVector NextWaypoint = PathPoints[1].Location;
+	FVector Dir = (NextWaypoint - GetActorLocation()).GetSafeNormal();
 	Dir.Z = 0.0f;
 	Dir.Normalize();
 
-	// Move with collision sweep
+	// Apply movement
 	const FVector Delta = Dir * MoveSpeed * DeltaTime;
 	FHitResult Hit;
 	AddActorWorldOffset(Delta, true, &Hit);
 
-	// If we hit something, try to navigate around it
-	if (Hit.bBlockingHit)
-	{
-		// Try moving to the side
-		FVector SideDir = FVector::CrossProduct(Dir, FVector::UpVector);
-		const FVector SideDelta = SideDir * MoveSpeed * 0.5f * DeltaTime;
-		AddActorWorldOffset(SideDelta, true);
-	}
-
-	// Rotate body toward movement direction
+	// Rotate body toward movement direction smoothly
 	const FRotator TargetRot = Dir.Rotation();
-	const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), TargetRot, DeltaTime, 2.0f);
+	const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), TargetRot, DeltaTime, 3.0f);
 	SetActorRotation(FRotator(0.0f, NewRot.Yaw, 0.0f));
 }
 
