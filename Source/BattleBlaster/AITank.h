@@ -58,6 +58,7 @@ protected:
 private:
 	bool bIsEnabled = false;
 	bool bPlayerInSight = false;
+	bool bCanSeePlayer = false;  // True if line of sight is clear
 
 	FTimerHandle FireTimerHandle;
 
@@ -69,5 +70,9 @@ private:
 	float GetDistanceToPlayer() const;
 	bool IsPlayerInRange(float Range) const;
 	bool IsFacingPlayer() const;
-	bool HasLineOfSight() const; // Check if player is visible (no walls blocking)
+	bool HasLineOfSight() const;
+	
+	// Obstacle avoidance
+	bool IsPathBlocked(const FVector& Direction, float Distance) const;
+	FVector FindUnblockedDirection(const FVector& DesiredDir) const;
 };

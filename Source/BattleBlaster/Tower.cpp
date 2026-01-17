@@ -62,27 +62,29 @@ bool ATower::HasLineOfSight() const
 {
 	if (!Tank) return false;
 
-	// Line trace from turret to player tank
+	// Trace from turret to player tank
 	FVector Start = GetActorLocation();
-	Start.Z += 50.0f; // Offset up from base
+	Start.Z += 60.0f;  // Offset up from base
+	
 	FVector End = Tank->GetActorLocation();
+	End.Z += 60.0f;  // Target player center
 
 	FHitResult Hit;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(this);
 	Params.AddIgnoredActor(Tank);
 
-	// Trace for blocking objects (walls, obstacles)
-	GetWorld()->LineTraceSingleByChannel(
+	// Use WorldStatic channel to detect walls/obstacles
+	bool bHitSomething = GetWorld()->LineTraceSingleByObjectType(
 		Hit,
 		Start,
 		End,
-		ECC_Visibility,
+		FCollisionObjectQueryParams(ECC_WorldStatic),
 		Params
 	);
 
-	// If nothing hit, we have clear line of sight
-	return !Hit.bBlockingHit;
+	// Clear line of sight if we didn't hit anything
+	return !bHitSomething;
 }
 
 void ATower::HandleDestruction()

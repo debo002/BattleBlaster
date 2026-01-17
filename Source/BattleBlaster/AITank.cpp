@@ -17,7 +17,7 @@ void AAITank::BeginPlay()
 
 	bIsEnabled = false;
 
-	// Fire timer uses FireRate as interval
+	// Fire timer
 	GetWorldTimerManager().SetTimer(
 		FireTimerHandle,
 		this,
@@ -65,12 +65,16 @@ void AAITank::UpdateBehavior(float DeltaTime)
 
 	if (bPlayerInSight)
 	{
-		// Only aim if we can actually see the player (no walls blocking)
-		if (HasLineOfSight())
+		// Check if we can actually see the player (no walls)
+		bCanSeePlayer = HasLineOfSight();
+		
+		// Only aim at player if we can see them
+		if (bCanSeePlayer)
 		{
 			UpdateAiming(DeltaTime);
 		}
 		
+		// Always try to move toward player (will find path around obstacles)
 		UpdateMovement(DeltaTime);
 	}
 }
@@ -88,94 +92,88 @@ void AAITank::UpdateMovement(float DeltaTime)
 		return;
 	}
 
-	// Determine target location
-	FVector TargetLocation;
-	if (Error > 0.0f)
-	{
-		// Too far - move toward player
-		TargetLocation = PlayerTank->GetActorLocation();
-	}
-	else
-	{
-		// Too close - move away from player
-		FVector AwayDir = (GetActorLocation() - PlayerTank->GetActorLocation()).GetSafeNormal();
-		TargetLocation = GetActorLocation() + (AwayDir * 400.0f);
-	}
-
-	// Try Navigation System pathfinding first
-	UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
-	bool bUsedPathfinding = false;
+	// Determine if we should move toward or away from player
+	bool bMoveTowardPlayer = (Error > 0.0f);
 	
-	if (NavSys)
+	// Get direction to player
+	FVector ToPlayer = (PlayerTank->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+	ToPlayer.Z = 0.0f;
+	ToPlayer.Normalize();
+
+	// Calculate desired movement direction
+	FVector DesiredDir = bMoveTowardPlayer ? ToPlayer : -ToPlayer;
+
+	// Check if path is blocked
+	FVector MoveDir = DesiredDir;
+	if (IsPathBlocked(DesiredDir, 150.0f))
 	{
-		FNavLocation NavLocation;
-		if (NavSys->ProjectPointToNavigation(TargetLocation, NavLocation, FVector(500.0f, 500.0f, 200.0f)))
-		{
-			FPathFindingQuery Query;
-			Query.StartLocation = GetActorLocation();
-			Query.EndLocation = NavLocation.Location;
-			Query.NavData = NavSys->GetDefaultNavDataInstance();
-
-			FPathFindingResult PathResult = NavSys->FindPathSync(Query);
-			
-			if (PathResult.IsSuccessful() && PathResult.Path.IsValid())
-			{
-				const TArray<FNavPathPoint>& PathPoints = PathResult.Path->GetPathPoints();
-				if (PathPoints.Num() >= 2)
-				{
-					// Move toward next waypoint
-					FVector NextWaypoint = PathPoints[1].Location;
-					FVector Dir = (NextWaypoint - GetActorLocation()).GetSafeNormal();
-					Dir.Z = 0.0f;
-					Dir.Normalize();
-
-					const FVector Delta = Dir * MoveSpeed * DeltaTime;
-					AddActorWorldOffset(Delta, true);
-
-					// Rotate toward movement
-					const FRotator TargetRot = Dir.Rotation();
-					const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), TargetRot, DeltaTime, 3.0f);
-					SetActorRotation(FRotator(0.0f, NewRot.Yaw, 0.0f));
-					
-					bUsedPathfinding = true;
-				}
-			}
-		}
+		// Try to find an unblocked direction
+		MoveDir = FindUnblockedDirection(DesiredDir);
 	}
 
-	// Fallback: Direct movement with obstacle avoidance
-	if (!bUsedPathfinding)
+	// Apply movement
+	const FVector Delta = MoveDir * MoveSpeed * DeltaTime;
+	FHitResult Hit;
+	AddActorWorldOffset(Delta, true, &Hit);
+
+	// Rotate body toward movement direction
+	if (!MoveDir.IsNearlyZero())
 	{
-		FVector Dir = (TargetLocation - GetActorLocation()).GetSafeNormal();
-		Dir.Z = 0.0f;
-		Dir.Normalize();
-
-		// Try forward movement
-		const FVector Delta = Dir * MoveSpeed * DeltaTime;
-		FHitResult Hit;
-		AddActorWorldOffset(Delta, true, &Hit);
-
-		// If blocked, try to slide around obstacle
-		if (Hit.bBlockingHit)
-		{
-			// Try sliding left
-			FVector LeftDir = FVector::CrossProduct(Dir, FVector::UpVector);
-			FHitResult LeftHit;
-			AddActorWorldOffset(LeftDir * MoveSpeed * 0.7f * DeltaTime, true, &LeftHit);
-
-			// If left blocked, try right
-			if (LeftHit.bBlockingHit)
-			{
-				FVector RightDir = -LeftDir;
-				AddActorWorldOffset(RightDir * MoveSpeed * 0.7f * DeltaTime, true);
-			}
-		}
-
-		// Rotate toward intended direction
-		const FRotator TargetRot = Dir.Rotation();
+		const FRotator TargetRot = MoveDir.Rotation();
 		const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), TargetRot, DeltaTime, 3.0f);
 		SetActorRotation(FRotator(0.0f, NewRot.Yaw, 0.0f));
 	}
+}
+
+bool AAITank::IsPathBlocked(const FVector& Direction, float Distance) const
+{
+	FVector Start = GetActorLocation();
+	Start.Z += 30.0f;
+	FVector End = Start + (Direction * Distance);
+
+	FHitResult Hit;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	// Use pawn channel to detect walls
+	GetWorld()->LineTraceSingleByChannel(
+		Hit,
+		Start,
+		End,
+		ECC_Pawn,
+		Params
+	);
+
+	return Hit.bBlockingHit;
+}
+
+FVector AAITank::FindUnblockedDirection(const FVector& DesiredDir) const
+{
+	// Try different angles to find unblocked path
+	const float AngleStep = 30.0f;
+	const float MaxAngle = 150.0f;
+	const float CheckDistance = 200.0f;
+
+	// Try alternating left and right
+	for (float Angle = AngleStep; Angle <= MaxAngle; Angle += AngleStep)
+	{
+		// Try right
+		FVector RightDir = DesiredDir.RotateAngleAxis(Angle, FVector::UpVector);
+		if (!IsPathBlocked(RightDir, CheckDistance))
+		{
+			return RightDir;
+		}
+
+		// Try left
+		FVector LeftDir = DesiredDir.RotateAngleAxis(-Angle, FVector::UpVector);
+		if (!IsPathBlocked(LeftDir, CheckDistance))
+		{
+			return LeftDir;
+		}
+	}
+
+	// All directions blocked, return original (will hit wall but better than nothing)
+	return DesiredDir;
 }
 
 void AAITank::UpdateAiming(float DeltaTime)
@@ -187,10 +185,12 @@ void AAITank::UpdateAiming(float DeltaTime)
 
 void AAITank::TryFire()
 {
-	if (!bIsEnabled || !PlayerTank || !bPlayerInSight) return;
+	if (!bIsEnabled) return;
+	if (!PlayerTank) return;
+	if (!bPlayerInSight) return;
 	if (!IsPlayerInRange(FireRange)) return;
+	if (!HasLineOfSight()) return;  // CRITICAL: Don't shoot through walls
 	if (!IsFacingPlayer()) return;
-	if (!HasLineOfSight()) return; // Don't shoot through walls
 
 	Fire();
 }
@@ -219,7 +219,7 @@ bool AAITank::IsFacingPlayer() const
 	Forward.Normalize();
 
 	const float Dot = FVector::DotProduct(Forward, ToPlayer);
-	const float Angle = FMath::RadiansToDegrees(FMath::Acos(Dot));
+	const float Angle = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(Dot, -1.0f, 1.0f)));
 
 	return Angle <= AimAccuracyThreshold;
 }
@@ -228,26 +228,27 @@ bool AAITank::HasLineOfSight() const
 {
 	if (!PlayerTank) return false;
 
-	// Line trace from turret to player
+	// Trace from our position to player
 	FVector Start = GetActorLocation();
-	Start.Z += 50.0f; // Offset up from base
+	Start.Z += 60.0f;  // Offset up from base
+	
 	FVector End = PlayerTank->GetActorLocation();
+	End.Z += 60.0f;  // Target player center
 
 	FHitResult Hit;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(this);
 	Params.AddIgnoredActor(PlayerTank);
 
-	// Trace for blocking objects (walls, obstacles)
-	GetWorld()->LineTraceSingleByChannel(
+	// Use WorldStatic channel to detect walls/obstacles
+	bool bHitSomething = GetWorld()->LineTraceSingleByObjectType(
 		Hit,
 		Start,
 		End,
-		ECC_Visibility,
+		FCollisionObjectQueryParams(ECC_WorldStatic),
 		Params
 	);
 
-	// If nothing hit, we have clear line of sight
-	return !Hit.bBlockingHit;
+	// Clear line of sight if we didn't hit anything
+	return !bHitSomething;
 }
-
