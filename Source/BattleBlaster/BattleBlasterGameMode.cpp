@@ -62,6 +62,7 @@ void ABattleBlasterGameMode::ApplyDifficultySettings()
 			Tower->FireRate = CurrentSettings.TowerFireRate;
 			Tower->FireRange = CurrentSettings.TowerFireRange;
 			Tower->TurretRotationSpeed = CurrentSettings.TowerTurretRotationSpeed;
+			Tower->ResetFireTimer();
 		}
 	}
 
@@ -87,6 +88,7 @@ void ABattleBlasterGameMode::ApplyDifficultySettings()
 			AI->SightRange = CurrentSettings.AITankSightRange;
 			AI->AimAccuracyThreshold = CurrentSettings.AITankAimAccuracy;
 			AI->TurretRotationSpeed = CurrentSettings.AITankTurretRotationSpeed;
+			AI->ResetFireTimer();
 		}
 	}
 }
@@ -195,8 +197,7 @@ void ABattleBlasterGameMode::ActorDied(AActor* DeadActor)
 			ScreenMessageWidget->SetVisibility(ESlateVisibility::Visible);
 		}
 
-		FTimerHandle Handle;
-		GetWorldTimerManager().SetTimer(Handle, this, &ABattleBlasterGameMode::OnGameOver, GameOverDelay, false);
+		GetWorldTimerManager().SetTimer(GameOverTimerHandle, this, &ABattleBlasterGameMode::OnGameOver, GameOverDelay, false);
 		return;
 	}
 
@@ -222,8 +223,7 @@ void ABattleBlasterGameMode::ActorDied(AActor* DeadActor)
 			ScreenMessageWidget->SetVisibility(ESlateVisibility::Visible);
 		}
 
-		FTimerHandle Handle;
-		GetWorldTimerManager().SetTimer(Handle, this, &ABattleBlasterGameMode::OnGameOver, GameOverDelay, false);
+		GetWorldTimerManager().SetTimer(GameOverTimerHandle, this, &ABattleBlasterGameMode::OnGameOver, GameOverDelay, false);
 	}
 }
 
@@ -241,4 +241,3 @@ void ABattleBlasterGameMode::OnGameOver()
 		GI->RestartCurrentLevel();
 	}
 }
-

@@ -3,6 +3,7 @@
 #include "Components/Button.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "BattleBlasterGameInstance.h"
 
 void UMainMenuWidget::NativeOnInitialized()
 {
@@ -21,7 +22,14 @@ void UMainMenuWidget::NativeOnInitialized()
 
 void UMainMenuWidget::OnPlayClicked()
 {
-	UGameplayStatics::OpenLevel(this, TEXT("Level_1"));
+	if (auto* GI = Cast<UBattleBlasterGameInstance>(GetGameInstance()))
+	{
+		GI->RestartGame();
+	}
+	else
+	{
+		UGameplayStatics::OpenLevel(this, TEXT("Level_1"));
+	}
 }
 
 void UMainMenuWidget::OnQuitClicked()

@@ -1,7 +1,6 @@
 // Tower.cpp
 #include "Tower.h"
 #include "Tank.h"
-#include "DrawDebugHelpers.h"
 
 ATower::ATower()
 {
@@ -33,8 +32,8 @@ void ATower::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// Only track player if enabled, tank exists, in range, and can see player
-	if (bIsEnabled && Tank && IsInRange() && HasLineOfSight())
+	// Only track player if enabled and tank is alive
+	if (bIsEnabled && Tank && Tank->IsAlive() && IsInRange() && HasLineOfSight())
 	{
 		RotateTurret(Tank->GetActorLocation(), DeltaTime);
 	}
@@ -96,4 +95,10 @@ void ATower::HandleDestruction()
 void ATower::SetTowerEnabled(bool bEnabled)
 {
 	bIsEnabled = bEnabled;
+}
+
+void ATower::ResetFireTimer()
+{
+	GetWorldTimerManager().ClearTimer(FireTimerHandle);
+	GetWorldTimerManager().SetTimer(FireTimerHandle, this, &ATower::TryFire, FireRate, true);
 }

@@ -30,7 +30,7 @@ public:
 	TObjectPtr<UButton> QuitButton;
 
 protected:
-	virtual void NativeConstruct() override;
+	virtual void NativeOnInitialized() override;
 
 private:
 	UFUNCTION()

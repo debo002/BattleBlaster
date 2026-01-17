@@ -49,6 +49,7 @@ private:
 	bool bIsVictory = false;
 
 	FTimerHandle CountdownTimerHandle;
+	FTimerHandle GameOverTimerHandle;
 
 	void ApplyDifficultySettings();
 	void SetupUI();

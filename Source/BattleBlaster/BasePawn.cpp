@@ -44,7 +44,6 @@ void ABasePawn::Fire()
 	UWorld* World = GetWorld();
 	if (!World) return;
 
-	// Cooldown check
 	const float Now = World->GetTimeSeconds();
 	if (Now - LastFireTime < FireCooldown) return;
 	LastFireTime = Now;
@@ -64,12 +63,10 @@ void ABasePawn::Fire()
 
 void ABasePawn::HandleDestruction()
 {
-	// Disable collision on death
-	if (CapsuleComp)  CapsuleComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	if (BaseMesh)     BaseMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	if (TurretMesh)   TurretMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	if (CapsuleComp) CapsuleComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	if (BaseMesh) BaseMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	if (TurretMesh) TurretMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	// VFX
 	if (DeathEffect)
 	{
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
@@ -77,13 +74,11 @@ void ABasePawn::HandleDestruction()
 		);
 	}
 
-	// SFX
 	if (DeathSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, DeathSound, GetActorLocation());
 	}
 
-	// Camera shake
 	if (DeathCameraShakeClass)
 	{
 		if (UWorld* World = GetWorld())
@@ -95,8 +90,3 @@ void ABasePawn::HandleDestruction()
 		}
 	}
 }
-
-
-
-
-

@@ -5,6 +5,8 @@
 #include "Blueprint/UserWidget.h"
 #include "MainMenuWidget.generated.h"
 
+class UButton;
+
 UCLASS()
 class BATTLEBLASTER_API UMainMenuWidget : public UUserWidget
 {
@@ -20,8 +22,8 @@ protected:
 	void OnQuitClicked();
 
 	UPROPERTY(meta=(BindWidget))
-	class UButton* PlayButton;
+	TObjectPtr<UButton> PlayButton;
 
 	UPROPERTY(meta=(BindWidget))
-	class UButton* QuitButton;
+	TObjectPtr<UButton> QuitButton;
 };

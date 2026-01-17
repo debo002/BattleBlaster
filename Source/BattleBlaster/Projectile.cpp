@@ -26,22 +26,14 @@ void AProjectile::BeginPlay()
 {
 	Super::BeginPlay();
 
-	ProjectileMesh->OnComponentHit.AddDynamic(this, &AProjectile::OnHit);
+	if (ProjectileMesh)
+	{
+		ProjectileMesh->OnComponentHit.AddDynamic(this, &AProjectile::OnHit);
+	}
 
 	if (LaunchSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, LaunchSound, GetActorLocation());
-	}
-
-	if (HitCameraShakeClass)
-	{
-		if (UWorld* World = GetWorld())
-		{
-			if (APlayerController* PC = World->GetFirstPlayerController())
-			{
-				PC->ClientStartCameraShake(HitCameraShakeClass);
-			}
-		}
 	}
 }
 
@@ -70,6 +62,24 @@ void AProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
 		if (HitSound)
 		{
 			UGameplayStatics::PlaySoundAtLocation(this, HitSound, GetActorLocation());
+		}
+
+		if (HitCameraShakeClass)
+		{
+			if (const UWorld* World = GetWorld())
+			{
+				if (APlayerController* PC = World->GetFirstPlayerController())
+				{
+					bool bShake = false;
+					if (OtherActor == PC->GetPawn()) bShake = true;
+					if (MyOwner->GetInstigatorController() == PC) bShake = true;
+
+					if (bShake)
+					{
+						PC->ClientStartCameraShake(HitCameraShakeClass);
+					}
+				}
+			}
 		}
 	}
 

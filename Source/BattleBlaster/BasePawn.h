@@ -60,9 +60,8 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Effects")
 	TSubclassOf<UCameraShakeBase> DeathCameraShakeClass;
 
-	UCapsuleComponent* GetCapsuleComponent() const { return CapsuleComp; }
+	UCapsuleComponent* GetCapsuleComponent() const { return CapsuleComp.Get(); }
 
 private:
-	// Cooldown tracking
 	float LastFireTime = -999.0f;
 };

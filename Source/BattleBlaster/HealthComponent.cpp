@@ -34,14 +34,12 @@ void UHealthComponent::SetMaxHealth(float NewMax)
 void UHealthComponent::OnDamageTaken(AActor* DamagedActor, float DamageAmount, const UDamageType* DamageType,
 	AController* InstigatedBy, AActor* DamageCauser)
 {
-	// Already dead or invalid damage
 	if (Health <= 0.0f || DamageAmount <= 0.0f) return;
 
 	Health = FMath::Clamp(Health - DamageAmount, 0.0f, MaxHealth);
 
-	if (Health <= 0.0f && GameModeRef)
+	if (Health <= 0.0f && GameModeRef.IsValid())
 	{
 		GameModeRef->ActorDied(DamagedActor);
 	}
 }
-

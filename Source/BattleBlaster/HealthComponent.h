@@ -34,8 +34,7 @@ protected:
 	float Health = 0.0f;
 
 private:
-	UPROPERTY()
-	TObjectPtr<ABattleBlasterGameMode> GameModeRef;
+	TWeakObjectPtr<ABattleBlasterGameMode> GameModeRef;
 
 	UFUNCTION()
 	void OnDamageTaken(AActor* DamagedActor, float DamageAmount, const class UDamageType* DamageType,

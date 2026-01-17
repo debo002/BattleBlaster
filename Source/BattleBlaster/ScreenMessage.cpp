@@ -9,5 +9,3 @@ void UScreenMessage::SetMessageText(const FString& Text)
 		MessageTextBlock->SetText(FText::FromString(Text));
 	}
 }
-
-

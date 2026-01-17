@@ -1,78 +1,52 @@
 ﻿# Battle Blaster
 
-Tank combat game built in Unreal Engine 5 with C++. Extended from tutorial foundation with custom AI systems, difficulty scaling, and level progression.
+Production-ready tank combat game built in Unreal Engine 5 C++. Features component-based architecture, custom AI behaviors, and a scalable difficulty system.
 
 ## Features
 
-- Player tank with turret aiming and projectile combat
-- Two AI enemy types: mobile tanks and stationary towers
-- Dynamic difficulty scaling across 3-level campaign
-- Component-based health and damage system
-- Main menu with level progression tracking
-- Game state management with countdown and win/lose conditions
+- **Combat System:** Projectile-based ballistics with impact VFX, screen shake, and component-based health handling.
+- **AI Systems:** 
+  - **Tanks:** Mobile enemies with obstacle avoidance, distance management, and prediction-based aiming.
+  - **Towers:** Stationary threats with line-of-sight checks and turret tracking.
+- **Progression:** 3-level campaign with persistent state and automatic difficulty scaling.
+- **UI:** Complete flow including main menu, HUD with countdowns, and pause menu with game state control.
 
-## Custom Systems
+## Technical Implementation
 
-**AI Tank Behavior**  
-Mobile enemy with distance-based combat tactics, independent turret tracking, and pathfinding.
+- **Engine:** Unreal Engine 5.5
+- **Languages:** C++ (Core logic), Blueprints (Asset binding)
+- **Subsystems:** Enhanced Input, Niagara VFX, UMG, AI Module
 
-**Difficulty Scaling**  
-Per-level stat adjustments for health, damage, fire rate, and movement speed across all actors.
+## Difficulty System
 
-**Level Progression**  
-Campaign flow with GameInstance persistence, automatic advancement, and restart handling.
-
-**Main Menu System**  
-Dedicated menu level with UI-only input mode and level transition handling.
-
-## Technical Stack
-
-- **Engine:** Unreal Engine 5.7
-- **Language:** C++
-- **Systems:** Enhanced Input, Niagara VFX, AI Module, Navigation System
-
-## Architecture
-
-Component-based health system with delegate-driven death notifications. Pawn hierarchy shares turret rotation and firing logic. GameMode orchestrates countdown, win/lose conditions, and difficulty application.
-
-## Project Structure
-
-```
-Source/BattleBlaster/
-├── Core/          # GameMode, GameInstance, difficulty settings
-├── Pawns/         # Tank, Tower, AITank, shared base
-├── Components/    # Health component
-├── Actors/        # Projectile
-└── UI/            # Menu widgets and controllers
-```
-
-## Build Requirements
-
-- Unreal Engine 5.7+
-- Visual Studio 2022
-- Windows 10/11
-
-## Setup
-
-1. Clone repository
-2. Generate Visual Studio project files
-3. Build in Development Editor
-4. Configure Blueprint classes in editor:
-   - Set GameInstance to `BP_BattleBlasterGameInstance`
-   - Set GameMode to `BP_BattleBlasterGameMode` in gameplay levels
-   - Name levels: `Level_1`, `Level_2`, `Level_3`
-   - Place NavMeshBoundsVolume in each level
+Custom `DifficultyManager` handling per-level scaling for:
+- Player/Enemy Health & Damage
+- AI Fire Rates & Accuracy
+- Movement Speeds & Sight Ranges
 
 ## Key Classes
 
-- `ABasePawn` - Shared pawn functionality
-- `ATank` - Player controller with cursor aiming and pause handling
-- `ATower` / `AAITank` - AI enemy variants
-- `UHealthComponent` - Reusable health/damage
-- `ABattleBlasterGameMode` - Game orchestration
-- `UBattleBlasterGameInstance` - Level progression persistence
-- `UPauseMenuWidget` - In-game pause menu with game control options
+* `ABasePawn`: Shared functionality for turret rotation and projectile spawning
+* `ATank`: Player controller with cursor-based aiming and input handling
+* `AAITank`: Mobile AI using custom obstacle avoidance vector math
+* `ATower`: Stationary AI with range and LOS checks
+* `UHealthComponent`: Reusable damage handler using delegate broadcasting
+* `ABattleBlasterGameMode`: Manages game loop, difficulty injection, and win/lose states
+* `UBattleBlasterGameInstance`: Persistent level tracking and transitions
 
----
+## Setup
 
-Extended tutorial project with significant custom implementations.
+1. **Build:** Generate project files and compile in Development Editor configuration.
+2. **Editor:**
+   - Set GameInstance to `BP_BattleBlasterGameInstance`.
+   - Configure Maps: `MainMenu`, `Level_1`, `Level_2`, `Level_3`.
+   - Ensure `NavMeshBoundsVolume` covers playable areas.
+3. **Play:** Launch from `MainMenu` to initialize progression properly.
+
+## Project Structure
+
+Source files located in simple flat structure at `Source/BattleBlaster/`:
+- **Core Loop:** GameMode, GameInstance, DifficultySettings
+- **Entities:** Tank, AITank, Tower, BasePawn, Projectile
+- **Components:** HealthComponent
+- **UI:** MainMenuWidget, PauseMenuWidget, ScreenMessage

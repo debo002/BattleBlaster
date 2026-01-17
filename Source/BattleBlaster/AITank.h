@@ -22,6 +22,7 @@ public:
 	virtual void HandleDestruction() override;
 
 	void SetAIEnabled(bool bEnabled);
+	void ResetFireTimer();
 
 	// Target reference (set by GameMode)
 	UPROPERTY()
