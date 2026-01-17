@@ -44,6 +44,12 @@ void AAITank::Tick(float DeltaTime)
 void AAITank::SetAIEnabled(bool bEnabled)
 {
 	bIsEnabled = bEnabled;
+	
+	// Debug: Log when AI is enabled
+	if (bEnabled)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("AI Tank %s ENABLED"), *GetName());
+	}
 }
 
 void AAITank::HandleDestruction()
@@ -76,59 +82,64 @@ void AAITank::UpdateBehavior(float DeltaTime)
 
 void AAITank::UpdateMovement(float DeltaTime)
 {
-	if (!PlayerTank) return;
+	if (!PlayerTank)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("AI Tank %s: No PlayerTank reference!"), *GetName());
+		return;
+	}
 
 	const float Dist = GetDistanceToPlayer();
 	const float Error = Dist - PreferredDistance;
 
-	// Within tolerance - hold position
-	if (FMath::Abs(Error) <= DistanceTolerance) return;
-
-	// Try AI pathfinding first
-	if (AAIController* AIController = Cast<AAIController>(GetController()))
+	// Debug log every 2 seconds
+	static float DebugTimer = 0.0f;
+	DebugTimer += DeltaTime;
+	if (DebugTimer >= 2.0f)
 	{
-		// Determine target location based on distance
-		FVector TargetLocation;
-		if (Error > 0.0f)
-		{
-			// Too far - move toward player
-			TargetLocation = PlayerTank->GetActorLocation();
-		}
-		else
-		{
-			// Too close - move away from player
-			FVector AwayDir = (GetActorLocation() - PlayerTank->GetActorLocation()).GetSafeNormal();
-			TargetLocation = GetActorLocation() + (AwayDir * 500.0f);
-		}
+		UE_LOG(LogTemp, Warning, TEXT("AI Tank %s: Distance=%.1f, PreferredDist=%.1f, Error=%.1f, Tolerance=%.1f, MoveSpeed=%.1f"),
+			*GetName(), Dist, PreferredDistance, Error, DistanceTolerance, MoveSpeed);
+		DebugTimer = 0.0f;
+	}
 
-		// Use AI pathfinding with acceptance radius
-		AIController->MoveToLocation(TargetLocation, DistanceTolerance, true, true, false, true);
+	// Within tolerance - hold position
+	if (FMath::Abs(Error) <= DistanceTolerance)
+	{
+		return;
+	}
+
+	// Calculate movement direction
+	FVector Dir;
+	if (Error > 0.0f)
+	{
+		// Too far - move toward player
+		Dir = (PlayerTank->GetActorLocation() - GetActorLocation()).GetSafeNormal();
 	}
 	else
 	{
-		// Fallback: Direct movement if no AI controller
-		FVector Dir;
-		if (Error > 0.0f)
-		{
-			Dir = (PlayerTank->GetActorLocation() - GetActorLocation()).GetSafeNormal();
-		}
-		else
-		{
-			Dir = (GetActorLocation() - PlayerTank->GetActorLocation()).GetSafeNormal();
-		}
-		Dir.Z = 0.0f;
-		Dir.Normalize();
-
-		// Move with collision
-		const FVector Delta = Dir * MoveSpeed * DeltaTime;
-		FHitResult Hit;
-		AddActorWorldOffset(Delta, true, &Hit);
-
-		// Rotate body toward movement
-		const FRotator TargetRot = Dir.Rotation();
-		const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), TargetRot, DeltaTime, 2.0f);
-		SetActorRotation(FRotator(0.0f, NewRot.Yaw, 0.0f));
+		// Too close - move away from player
+		Dir = (GetActorLocation() - PlayerTank->GetActorLocation()).GetSafeNormal();
 	}
+	Dir.Z = 0.0f;
+	Dir.Normalize();
+
+	// Move with collision sweep
+	const FVector Delta = Dir * MoveSpeed * DeltaTime;
+	FHitResult Hit;
+	AddActorWorldOffset(Delta, true, &Hit);
+
+	// If we hit something, try to navigate around it
+	if (Hit.bBlockingHit)
+	{
+		// Try moving to the side
+		FVector SideDir = FVector::CrossProduct(Dir, FVector::UpVector);
+		const FVector SideDelta = SideDir * MoveSpeed * 0.5f * DeltaTime;
+		AddActorWorldOffset(SideDelta, true);
+	}
+
+	// Rotate body toward movement direction
+	const FRotator TargetRot = Dir.Rotation();
+	const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), TargetRot, DeltaTime, 2.0f);
+	SetActorRotation(FRotator(0.0f, NewRot.Yaw, 0.0f));
 }
 
 void AAITank::UpdateAiming(float DeltaTime)
