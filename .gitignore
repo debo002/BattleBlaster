@@ -42,4 +42,5 @@ Thumbs.db
 !Content/**
 !*.uproject
 !README.md
+!PAUSE_MENU_SETUP.md
 !.gitignore
