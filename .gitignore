@@ -31,6 +31,7 @@ build_output.txt
 # Test/review documents
 FINAL_REVIEW_REPORT.md
 QUICK_START_GUIDE.md
+PAUSE_MENU_SETUP.md
 
 # OS files
 .DS_Store
@@ -42,5 +43,4 @@ Thumbs.db
 !Content/**
 !*.uproject
 !README.md
-!PAUSE_MENU_SETUP.md
 !.gitignore
