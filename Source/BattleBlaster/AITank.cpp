@@ -1,9 +1,6 @@
 ﻿// AITank.cpp
 #include "AITank.h"
 #include "Tank.h"
-#include "AIController.h"
-#include "NavigationSystem.h"
-#include "NavigationPath.h"
 
 AAITank::AAITank()
 {
