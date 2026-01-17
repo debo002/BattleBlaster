@@ -6,6 +6,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Kismet/GameplayStatics.h"
+#include "Blueprint/UserWidget.h"
 
 ATank::ATank()
 {
@@ -60,6 +61,7 @@ void ATank::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 		EIC->BindAction(MoveAction, ETriggerEvent::Completed, this, &ATank::MoveInputCompleted);
 		EIC->BindAction(TurnAction, ETriggerEvent::Triggered, this, &ATank::TurnInput);
 		EIC->BindAction(FireAction, ETriggerEvent::Started, this, &ATank::Fire);
+		EIC->BindAction(PauseAction, ETriggerEvent::Started, this, &ATank::TogglePause);
 	}
 }
 
@@ -128,3 +130,37 @@ void ATank::SetPlayerEnabled(bool bEnabled)
 		PlayerController->bShowMouseCursor = false;
 	}
 }
+
+void ATank::TogglePause()
+{
+	if (!PlayerController || !PauseMenuClass) return;
+
+	// Check if already paused
+	const bool bIsPaused = UGameplayStatics::IsGamePaused(this);
+
+	if (bIsPaused)
+	{
+		// Resume handled by widget
+		return;
+	}
+
+	// Pause game
+	UGameplayStatics::SetGamePaused(this, true);
+
+	// Create and show pause menu
+	if (UUserWidget* PauseWidget = CreateWidget<UUserWidget>(PlayerController, PauseMenuClass))
+	{
+		PauseWidget->AddToViewport(1000);
+
+		// Switch to UI-only input
+		FInputModeUIOnly UIMode;
+		UIMode.SetWidgetToFocus(PauseWidget->TakeWidget());
+		UIMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		PlayerController->SetInputMode(UIMode);
+
+		PlayerController->bShowMouseCursor = true;
+		PlayerController->bEnableClickEvents = true;
+		PlayerController->bEnableMouseOverEvents = true;
+	}
+}
+

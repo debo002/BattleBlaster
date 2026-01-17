@@ -52,6 +52,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> FireAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> PauseAction;
+
+	// UI
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<class UUserWidget> PauseMenuClass;
+
 	// Movement
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
 	float Speed = 400.0f;
@@ -69,4 +76,5 @@ private:
 	void MoveInput(const FInputActionValue& Value);
 	void MoveInputCompleted(const FInputActionValue& Value);
 	void TurnInput(const FInputActionValue& Value);
+	void TogglePause();
 };

@@ -66,11 +66,12 @@ Source/BattleBlaster/
 ## Key Classes
 
 - `ABasePawn` - Shared pawn functionality
-- `ATank` - Player controller with cursor aiming
+- `ATank` - Player controller with cursor aiming and pause handling
 - `ATower` / `AAITank` - AI enemy variants
 - `UHealthComponent` - Reusable health/damage
 - `ABattleBlasterGameMode` - Game orchestration
 - `UBattleBlasterGameInstance` - Level progression persistence
+- `UPauseMenuWidget` - In-game pause menu with game control options
 
 ---
 
