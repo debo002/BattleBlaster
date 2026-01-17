@@ -100,18 +100,42 @@ void AAITank::UpdateMovement(float DeltaTime)
 	// Calculate desired movement direction
 	FVector DesiredDir = bMoveTowardPlayer ? ToPlayer : -ToPlayer;
 
-	// Check if path is blocked
+	// Check multiple distances ahead for obstacles
 	FVector MoveDir = DesiredDir;
-	if (IsPathBlocked(DesiredDir, 150.0f))
+	
+	// Check close range first (immediate obstacle)
+	if (IsPathBlocked(DesiredDir, 100.0f))
 	{
-		// Try to find an unblocked direction
 		MoveDir = FindUnblockedDirection(DesiredDir);
+	}
+	// Then check medium range (upcoming obstacle)
+	else if (IsPathBlocked(DesiredDir, 200.0f))
+	{
+		// Start turning early for smoother navigation
+		FVector EarlyTurnDir = FindUnblockedDirection(DesiredDir);
+		// Blend between desired and turn direction for smoother movement
+		MoveDir = FMath::Lerp(DesiredDir, EarlyTurnDir, 0.5f).GetSafeNormal();
 	}
 
 	// Apply movement
 	const FVector Delta = MoveDir * MoveSpeed * DeltaTime;
 	FHitResult Hit;
 	AddActorWorldOffset(Delta, true, &Hit);
+
+	// If still hitting something, try perpendicular movement
+	if (Hit.bBlockingHit)
+	{
+		// Slide along the wall
+		FVector SlideDir = FVector::CrossProduct(Hit.Normal, FVector::UpVector);
+		
+		// Choose slide direction that moves us closer to target
+		if (FVector::DotProduct(SlideDir, DesiredDir) < 0)
+		{
+			SlideDir = -SlideDir;
+		}
+		
+		AddActorWorldOffset(SlideDir * MoveSpeed * 0.5f * DeltaTime, true);
+	}
 
 	// Rotate body toward movement direction
 	if (!MoveDir.IsNearlyZero())
@@ -132,29 +156,29 @@ bool AAITank::IsPathBlocked(const FVector& Direction, float Distance) const
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(this);
 
-	// Use pawn channel to detect walls
-	GetWorld()->LineTraceSingleByChannel(
+	// Use WorldStatic to detect walls/blocks (same as line of sight)
+	bool bHit = GetWorld()->LineTraceSingleByObjectType(
 		Hit,
 		Start,
 		End,
-		ECC_Pawn,
+		FCollisionObjectQueryParams(ECC_WorldStatic),
 		Params
 	);
 
-	return Hit.bBlockingHit;
+	return bHit;
 }
 
 FVector AAITank::FindUnblockedDirection(const FVector& DesiredDir) const
 {
 	// Try different angles to find unblocked path
-	const float AngleStep = 30.0f;
-	const float MaxAngle = 150.0f;
-	const float CheckDistance = 200.0f;
+	const float AngleStep = 15.0f;  // Smaller steps for better precision
+	const float MaxAngle = 180.0f;  // Check full semicircle
+	const float CheckDistance = 250.0f;  // Longer check distance
 
-	// Try alternating left and right
+	// Try alternating left and right with increasing angles
 	for (float Angle = AngleStep; Angle <= MaxAngle; Angle += AngleStep)
 	{
-		// Try right
+		// Try right first
 		FVector RightDir = DesiredDir.RotateAngleAxis(Angle, FVector::UpVector);
 		if (!IsPathBlocked(RightDir, CheckDistance))
 		{
@@ -169,7 +193,20 @@ FVector AAITank::FindUnblockedDirection(const FVector& DesiredDir) const
 		}
 	}
 
-	// All directions blocked, return original (will hit wall but better than nothing)
+	// All directions blocked - try moving perpendicular to wall
+	FVector PerpendicularRight = FVector::CrossProduct(DesiredDir, FVector::UpVector);
+	if (!IsPathBlocked(PerpendicularRight, CheckDistance))
+	{
+		return PerpendicularRight;
+	}
+	
+	FVector PerpendicularLeft = -PerpendicularRight;
+	if (!IsPathBlocked(PerpendicularLeft, CheckDistance))
+	{
+		return PerpendicularLeft;
+	}
+
+	// Completely stuck - return original direction
 	return DesiredDir;
 }
 
