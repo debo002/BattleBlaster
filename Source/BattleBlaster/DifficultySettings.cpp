@@ -10,56 +10,80 @@ void FDifficultyManager::InitializeSettings()
 {
 	if (bInitialized) return;
 
-	// Level 1: Forgiving intro
+	// Level 1: Small enclosed map, close-quarters combat
 	EasySettings.PlayerHealth = 200.0f;
 	EasySettings.PlayerDamage = 50.0f;
-	EasySettings.AITankHealth = 50.0f;
-	EasySettings.AITankDamage = 10.0f;
-	EasySettings.AITankFireRate = 4.0f;
-	EasySettings.AITankMoveSpeed = 200.0f;
-	EasySettings.AITankTurretRotationSpeed = 3.0f;
-	EasySettings.AITankSightRange = 1200.0f;
-	EasySettings.AITankFireRange = 800.0f;
-	EasySettings.AITankAimAccuracy = 30.0f;
-	EasySettings.TowerHealth = 50.0f;
-	EasySettings.TowerDamage = 10.0f;
-	EasySettings.TowerFireRate = 4.0f;
-	EasySettings.TowerTurretRotationSpeed = 3.0f;
-	EasySettings.TowerFireRange = 1000.0f;
+	
+	EasySettings.AITankHealth = 100.0f;
+	EasySettings.AITankDamage = 50.0f;
+	EasySettings.AITankFireRate = 2.5f;
+	EasySettings.AITankMoveSpeed = 180.0f;
+	EasySettings.AITankTurretRotationSpeed = 2.5f;
+	EasySettings.AITankSightRange = 700.0f;
+	EasySettings.AITankFireRange = 650.0f;
+	EasySettings.AITankAimAccuracy = 25.0f;
+	EasySettings.AITankPreferredDistance = 400.0f;
+	EasySettings.AITankDistanceTolerance = 100.0f;
+	
+	EasySettings.TowerHealth = 100.0f;
+	EasySettings.TowerDamage = 25.0f;
+	EasySettings.TowerFireRate = 2.0f;
+	EasySettings.TowerTurretRotationSpeed = 2.0f;
+	EasySettings.TowerFireRange = 650.0f;
+	
+	EasySettings.ProjectileSpeed = 650.0f;
+	EasySettings.ProjectileLifespan = 1.2f;
+	EasySettings.ProjectileGravityScale = 0.5f;
 
-	// Level 2: Balanced challenge
-	MediumSettings.PlayerHealth = 100.0f;
-	MediumSettings.PlayerDamage = 25.0f;
-	MediumSettings.AITankHealth = 100.0f;
-	MediumSettings.AITankDamage = 20.0f;
+	// Level 2: Open terrain, long-range engagements
+	MediumSettings.PlayerHealth = 150.0f;
+	MediumSettings.PlayerDamage = 50.0f;
+	
+	MediumSettings.AITankHealth = 150.0f;
+	MediumSettings.AITankDamage = 40.0f;
 	MediumSettings.AITankFireRate = 2.5f;
-	MediumSettings.AITankMoveSpeed = 350.0f;
-	MediumSettings.AITankTurretRotationSpeed = 5.0f;
-	MediumSettings.AITankSightRange = 2000.0f;
-	MediumSettings.AITankFireRange = 1200.0f;
+	MediumSettings.AITankMoveSpeed = 120.0f;
+	MediumSettings.AITankTurretRotationSpeed = 2.5f;
+	MediumSettings.AITankSightRange = 2500.0f;
+	MediumSettings.AITankFireRange = 2200.0f;
 	MediumSettings.AITankAimAccuracy = 15.0f;
-	MediumSettings.TowerHealth = 100.0f;
-	MediumSettings.TowerDamage = 20.0f;
+	MediumSettings.AITankPreferredDistance = 1200.0f;
+	MediumSettings.AITankDistanceTolerance = 200.0f;
+	
+	MediumSettings.TowerHealth = 150.0f;
+	MediumSettings.TowerDamage = 30.0f;
 	MediumSettings.TowerFireRate = 2.5f;
-	MediumSettings.TowerTurretRotationSpeed = 5.0f;
-	MediumSettings.TowerFireRange = 1400.0f;
+	MediumSettings.TowerTurretRotationSpeed = 2.5f;
+	MediumSettings.TowerFireRange = 2200.0f;
+	
+	MediumSettings.ProjectileSpeed = 1100.0f;
+	MediumSettings.ProjectileLifespan = 2.2f;
+	MediumSettings.ProjectileGravityScale = 0.0f;
 
-	// Level 3: High lethality
-	HardSettings.PlayerHealth = 60.0f;
-	HardSettings.PlayerDamage = 20.0f;
-	HardSettings.AITankHealth = 200.0f;
-	HardSettings.AITankDamage = 30.0f;
-	HardSettings.AITankFireRate = 1.5f;
-	HardSettings.AITankMoveSpeed = 500.0f;
-	HardSettings.AITankTurretRotationSpeed = 8.0f;
-	HardSettings.AITankSightRange = 3000.0f;
-	HardSettings.AITankFireRange = 1800.0f;
-	HardSettings.AITankAimAccuracy = 5.0f;
-	HardSettings.TowerHealth = 250.0f;
+	// Level 3: Aggressive AI, fast-paced combat
+	HardSettings.PlayerHealth = 150.0f;
+	HardSettings.PlayerDamage = 50.0f;
+
+	HardSettings.AITankHealth = 150.0f;
+	HardSettings.AITankDamage = 45.0f;
+	HardSettings.AITankFireRate = 1.8f;
+	HardSettings.AITankMoveSpeed = 250.0f;
+	HardSettings.AITankTurretRotationSpeed = 4.0f;
+	HardSettings.AITankSightRange = 1800.0f;
+	HardSettings.AITankFireRange = 1600.0f;
+	HardSettings.AITankAimAccuracy = 10.0f;
+	HardSettings.AITankPreferredDistance = 600.0f;
+	HardSettings.AITankDistanceTolerance = 100.0f;
+
+	HardSettings.TowerHealth = 150.0f;
 	HardSettings.TowerDamage = 35.0f;
 	HardSettings.TowerFireRate = 1.5f;
-	HardSettings.TowerTurretRotationSpeed = 8.0f;
-	HardSettings.TowerFireRange = 2200.0f;
+	HardSettings.TowerTurretRotationSpeed = 4.0f;
+	HardSettings.TowerFireRange = 1600.0f;
+
+	HardSettings.ProjectileSpeed = 1300.0f;
+	HardSettings.ProjectileLifespan = 1.3f;
+	HardSettings.ProjectileGravityScale = 0.0f;
 
 	bInitialized = true;
 }

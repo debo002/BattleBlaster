@@ -24,13 +24,21 @@ void AAITank::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void AAITank::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	
+	ATank* PlayerTank = GetPlayerTank();
 	if (!bIsEnabled || !PlayerTank || !PlayerTank->IsAlive()) return;
+	
 	UpdateBehavior(DeltaTime);
 }
 
 void AAITank::SetAIEnabled(bool bEnabled)
 {
 	bIsEnabled = bEnabled;
+}
+
+void AAITank::SetPlayerTarget(ATank* InTarget)
+{
+	PlayerTankWeak = InTarget;
 }
 
 void AAITank::ResetFireTimer()
@@ -47,8 +55,14 @@ void AAITank::HandleDestruction()
 	SetActorTickEnabled(false);
 }
 
+ATank* AAITank::GetPlayerTank() const
+{
+	return PlayerTankWeak.Get();
+}
+
 void AAITank::UpdateBehavior(float DeltaTime)
 {
+	ATank* PlayerTank = GetPlayerTank();
 	if (!PlayerTank) return;
 
 	const float Dist = GetDistanceToPlayer();
@@ -69,15 +83,13 @@ void AAITank::UpdateBehavior(float DeltaTime)
 
 void AAITank::UpdateMovement(float DeltaTime)
 {
+	ATank* PlayerTank = GetPlayerTank();
 	if (!PlayerTank) return;
 
 	const float Dist = GetDistanceToPlayer();
 	const float Error = Dist - PreferredDistance;
 
-	if (FMath::Abs(Error) <= DistanceTolerance)
-	{
-		return;
-	}
+	if (FMath::Abs(Error) <= DistanceTolerance) return;
 
 	const bool bMoveTowardPlayer = (Error > 0.0f);
 	
@@ -88,13 +100,14 @@ void AAITank::UpdateMovement(float DeltaTime)
 	FVector DesiredDir = bMoveTowardPlayer ? ToPlayer : -ToPlayer;
 	FVector MoveDir = DesiredDir;
 	
+	// Obstacle avoidance
 	if (IsPathBlocked(DesiredDir, 100.0f))
 	{
 		MoveDir = FindUnblockedDirection(DesiredDir);
 	}
 	else if (IsPathBlocked(DesiredDir, 200.0f))
 	{
-		FVector EarlyTurnDir = FindUnblockedDirection(DesiredDir);
+		const FVector EarlyTurnDir = FindUnblockedDirection(DesiredDir);
 		MoveDir = FMath::Lerp(DesiredDir, EarlyTurnDir, 0.5f).GetSafeNormal();
 	}
 
@@ -102,16 +115,18 @@ void AAITank::UpdateMovement(float DeltaTime)
 	FHitResult Hit;
 	AddActorWorldOffset(Delta, true, &Hit);
 
+	// Slide along walls
 	if (Hit.bBlockingHit)
 	{
 		FVector SlideDir = FVector::CrossProduct(Hit.Normal, FVector::UpVector);
-		if (FVector::DotProduct(SlideDir, DesiredDir) < 0)
+		if (FVector::DotProduct(SlideDir, DesiredDir) < 0.0f)
 		{
 			SlideDir = -SlideDir;
 		}
 		AddActorWorldOffset(SlideDir * MoveSpeed * 0.5f * DeltaTime, true);
 	}
 
+	// Face movement direction
 	if (!MoveDir.IsNearlyZero())
 	{
 		const FRotator TargetRot = MoveDir.Rotation();
@@ -143,31 +158,32 @@ FVector AAITank::FindUnblockedDirection(const FVector& DesiredDir) const
 	constexpr float MaxAngle = 180.0f;
 	constexpr float CheckDistance = 250.0f;
 
+	// Check alternating sides
 	for (float Angle = AngleStep; Angle <= MaxAngle; Angle += AngleStep)
 	{
-		FVector RightDir = DesiredDir.RotateAngleAxis(Angle, FVector::UpVector);
+		const FVector RightDir = DesiredDir.RotateAngleAxis(Angle, FVector::UpVector);
 		if (!IsPathBlocked(RightDir, CheckDistance))
 		{
 			return RightDir;
 		}
 
-		FVector LeftDir = DesiredDir.RotateAngleAxis(-Angle, FVector::UpVector);
+		const FVector LeftDir = DesiredDir.RotateAngleAxis(-Angle, FVector::UpVector);
 		if (!IsPathBlocked(LeftDir, CheckDistance))
 		{
 			return LeftDir;
 		}
 	}
 
-	FVector PerpendicularRight = FVector::CrossProduct(DesiredDir, FVector::UpVector);
+	// Fallback: perpendicular directions
+	const FVector PerpendicularRight = FVector::CrossProduct(DesiredDir, FVector::UpVector);
 	if (!IsPathBlocked(PerpendicularRight, CheckDistance))
 	{
 		return PerpendicularRight;
 	}
 	
-	FVector PerpendicularLeft = -PerpendicularRight;
-	if (!IsPathBlocked(PerpendicularLeft, CheckDistance))
+	if (!IsPathBlocked(-PerpendicularRight, CheckDistance))
 	{
-		return PerpendicularLeft;
+		return -PerpendicularRight;
 	}
 
 	return DesiredDir;
@@ -175,13 +191,17 @@ FVector AAITank::FindUnblockedDirection(const FVector& DesiredDir) const
 
 void AAITank::UpdateAiming(float DeltaTime)
 {
+	ATank* PlayerTank = GetPlayerTank();
 	if (!PlayerTank) return;
+	
 	RotateTurret(PlayerTank->GetActorLocation(), DeltaTime);
 }
 
 void AAITank::TryFire()
 {
 	if (!bIsEnabled) return;
+	
+	ATank* PlayerTank = GetPlayerTank();
 	if (!PlayerTank) return;
 	if (!bPlayerInSight) return;
 	if (!IsPlayerInRange(FireRange)) return;
@@ -193,7 +213,9 @@ void AAITank::TryFire()
 
 float AAITank::GetDistanceToPlayer() const
 {
+	ATank* PlayerTank = GetPlayerTank();
 	if (!PlayerTank) return MAX_FLT;
+	
 	return FVector::Dist(GetActorLocation(), PlayerTank->GetActorLocation());
 }
 
@@ -204,6 +226,7 @@ bool AAITank::IsPlayerInRange(float Range) const
 
 bool AAITank::IsFacingPlayer() const
 {
+	ATank* PlayerTank = GetPlayerTank();
 	if (!PlayerTank || !TurretMesh) return false;
 
 	const FVector ToPlayer = (PlayerTank->GetActorLocation() - TurretMesh->GetComponentLocation()).GetSafeNormal2D();
@@ -216,6 +239,7 @@ bool AAITank::IsFacingPlayer() const
 
 bool AAITank::HasLineOfSight() const
 {
+	ATank* PlayerTank = GetPlayerTank();
 	if (!PlayerTank) return false;
 
 	FVector Start = GetActorLocation();

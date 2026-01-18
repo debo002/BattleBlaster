@@ -1,6 +1,7 @@
 // BasePawn.cpp
 #include "BasePawn.h"
 #include "Components/CapsuleComponent.h"
+#include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Projectile.h"
@@ -44,6 +45,7 @@ void ABasePawn::Fire()
 	UWorld* World = GetWorld();
 	if (!World) return;
 
+	// Fire rate enforcement
 	const float Now = World->GetTimeSeconds();
 	if (Now - LastFireTime < FireCooldown) return;
 	LastFireTime = Now;
@@ -54,10 +56,25 @@ void ABasePawn::Fire()
 		ProjectileSpawnPoint->GetComponentRotation()
 	);
 
-	if (Proj)
+	if (!Proj) return;
+
+	Proj->SetOwner(this);
+	Proj->Damage = ProjectileDamage;
+
+	const float ResolvedSpeed = FMath::Max(ProjectileSpeed, 1.0f);
+	const float ResolvedLifespan = FMath::Clamp(ProjectileLifespan, 0.05f, 30.0f);
+
+	Proj->MaxTravelDistance = ResolvedSpeed * ResolvedLifespan;
+	Proj->SetLifeSpan(ResolvedLifespan);
+
+	if (UProjectileMovementComponent* MoveComp = Proj->FindComponentByClass<UProjectileMovementComponent>())
 	{
-		Proj->SetOwner(this);
-		Proj->Damage = ProjectileDamage;
+		MoveComp->InitialSpeed = ResolvedSpeed;
+		MoveComp->MaxSpeed = ResolvedSpeed;
+		MoveComp->Velocity = Proj->GetActorForwardVector() * ResolvedSpeed;
+		MoveComp->ProjectileGravityScale = FMath::Max(0.0f, ProjectileGravityScale);
+		MoveComp->bSweepCollision = true;
+		MoveComp->bForceSubStepping = true;
 	}
 }
 

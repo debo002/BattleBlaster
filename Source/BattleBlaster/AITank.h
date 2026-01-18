@@ -24,9 +24,7 @@ public:
 	void SetAIEnabled(bool bEnabled);
 	void ResetFireTimer();
 
-	// Target reference (set by GameMode)
-	UPROPERTY()
-	TObjectPtr<ATank> PlayerTank;
+	void SetPlayerTarget(ATank* InTarget);
 
 	// Detection
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Detection")
@@ -57,9 +55,12 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
+	// GC-safe weak reference to player
+	TWeakObjectPtr<ATank> PlayerTankWeak;
+	
 	bool bIsEnabled = false;
 	bool bPlayerInSight = false;
-	bool bCanSeePlayer = false;  // True if line of sight is clear
+	bool bCanSeePlayer = false;
 
 	FTimerHandle FireTimerHandle;
 
@@ -73,7 +74,8 @@ private:
 	bool IsFacingPlayer() const;
 	bool HasLineOfSight() const;
 	
-	// Obstacle avoidance
 	bool IsPathBlocked(const FVector& Direction, float Distance) const;
 	FVector FindUnblockedDirection(const FVector& DesiredDir) const;
+	
+	ATank* GetPlayerTank() const;
 };

@@ -9,6 +9,7 @@ class UStaticMeshComponent;
 class UProjectileMovementComponent;
 class UNiagaraComponent;
 class UNiagaraSystem;
+class USoundBase;
 
 /**
  * Projectile fired by tanks and towers.
@@ -24,6 +25,9 @@ public:
 	// Damage value (set by spawner)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	float Damage = 25.0f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	float MaxTravelDistance = 0.0f;
 
 	// Effects
 	UPROPERTY(VisibleAnywhere, Category = "Effects")
@@ -51,6 +55,8 @@ protected:
 	TObjectPtr<UProjectileMovementComponent> MovementComp;
 
 private:
+	FVector SpawnLocation = FVector::ZeroVector;
+
 	UFUNCTION()
 	void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);

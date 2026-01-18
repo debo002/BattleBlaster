@@ -11,7 +11,7 @@ class AProjectile;
 class UNiagaraSystem;
 
 /**
- * Base class for all tank-like pawns (player and AI).
+ * Base class for tank-like pawns.
  */
 UCLASS()
 class BATTLEBLASTER_API ABasePawn : public APawn
@@ -25,7 +25,6 @@ public:
 	void Fire();
 	virtual void HandleDestruction();
 
-	// Combat stats (set by GameMode)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	float TurretRotationSpeed = 5.0f;
 
@@ -34,6 +33,16 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	float FireCooldown = 0.5f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+	float ProjectileSpeed = 1500.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+	float ProjectileLifespan = 3.0f;
+
+	// 0 = no gravity, 1 = normal
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+	float ProjectileGravityScale = 0.0f;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")

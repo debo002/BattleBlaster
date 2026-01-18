@@ -12,19 +12,47 @@ void ABattleBlasterGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Load difficulty from GameInstance
+	int32 LevelIndex = 1;
+	FString MapNameStr = TEXT("Unknown");
+	
+	if (UWorld* World = GetWorld())
+	{
+		MapNameStr = World->GetMapName();
+		MapNameStr.RemoveFromStart(World->StreamingLevelsPrefix);
+		
+		if (MapNameStr.Contains(TEXT("_3")) || MapNameStr.EndsWith(TEXT("3")))
+		{
+			LevelIndex = 3;
+		}
+		else if (MapNameStr.Contains(TEXT("_2")) || MapNameStr.EndsWith(TEXT("2")))
+		{
+			LevelIndex = 2;
+		}
+		else
+		{
+			LevelIndex = 1;
+		}
+	}
+	
+	// Update GameInstance to match detected level
 	if (auto* GI = Cast<UBattleBlasterGameInstance>(GetGameInstance()))
 	{
-		CurrentSettings = FDifficultyManager::GetSettingsForLevel(GI->CurrentLevelIndex);
+		GI->CurrentLevelIndex = LevelIndex;
 	}
-	else
-	{
-		CurrentSettings = FDifficultyManager::GetSettingsForLevel(2);
-	}
+	
+	CurrentSettings = FDifficultyManager::GetSettingsForLevel(LevelIndex);
+
 
 	ApplyDifficultySettings();
 	SetupUI();
 	StartCountdown();
+}
+
+void ABattleBlasterGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	GetWorldTimerManager().ClearTimer(CountdownTimerHandle);
+	GetWorldTimerManager().ClearTimer(GameOverTimerHandle);
+	Super::EndPlay(EndPlayReason);
 }
 
 void ABattleBlasterGameMode::ApplyDifficultySettings()
@@ -40,6 +68,9 @@ void ABattleBlasterGameMode::ApplyDifficultySettings()
 				HC->SetMaxHealth(CurrentSettings.PlayerHealth);
 			}
 			PlayerTank->ProjectileDamage = CurrentSettings.PlayerDamage;
+			PlayerTank->ProjectileSpeed = CurrentSettings.ProjectileSpeed;
+			PlayerTank->ProjectileLifespan = CurrentSettings.ProjectileLifespan;
+			PlayerTank->ProjectileGravityScale = CurrentSettings.ProjectileGravityScale;
 		}
 	}
 
@@ -52,7 +83,7 @@ void ABattleBlasterGameMode::ApplyDifficultySettings()
 	{
 		if (ATower* Tower = Cast<ATower>(Actor))
 		{
-			Tower->Tank = PlayerTank;
+			Tower->SetPlayerTarget(PlayerTank);
 
 			if (auto* HC = Tower->FindComponentByClass<UHealthComponent>())
 			{
@@ -62,6 +93,9 @@ void ABattleBlasterGameMode::ApplyDifficultySettings()
 			Tower->FireRate = CurrentSettings.TowerFireRate;
 			Tower->FireRange = CurrentSettings.TowerFireRange;
 			Tower->TurretRotationSpeed = CurrentSettings.TowerTurretRotationSpeed;
+			Tower->ProjectileSpeed = CurrentSettings.ProjectileSpeed;
+			Tower->ProjectileLifespan = CurrentSettings.ProjectileLifespan;
+			Tower->ProjectileGravityScale = CurrentSettings.ProjectileGravityScale;
 			Tower->ResetFireTimer();
 		}
 	}
@@ -75,7 +109,7 @@ void ABattleBlasterGameMode::ApplyDifficultySettings()
 	{
 		if (AAITank* AI = Cast<AAITank>(Actor))
 		{
-			AI->PlayerTank = PlayerTank;
+			AI->SetPlayerTarget(PlayerTank);
 
 			if (auto* HC = AI->FindComponentByClass<UHealthComponent>())
 			{
@@ -88,6 +122,11 @@ void ABattleBlasterGameMode::ApplyDifficultySettings()
 			AI->SightRange = CurrentSettings.AITankSightRange;
 			AI->AimAccuracyThreshold = CurrentSettings.AITankAimAccuracy;
 			AI->TurretRotationSpeed = CurrentSettings.AITankTurretRotationSpeed;
+			AI->PreferredDistance = CurrentSettings.AITankPreferredDistance;
+			AI->DistanceTolerance = CurrentSettings.AITankDistanceTolerance;
+			AI->ProjectileSpeed = CurrentSettings.ProjectileSpeed;
+			AI->ProjectileLifespan = CurrentSettings.ProjectileLifespan;
+			AI->ProjectileGravityScale = CurrentSettings.ProjectileGravityScale;
 			AI->ResetFireTimer();
 		}
 	}

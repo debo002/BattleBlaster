@@ -4,9 +4,6 @@
 #include "CoreMinimal.h"
 #include "DifficultySettings.generated.h"
 
-/**
- * Per-level difficulty tuning parameters.
- */
 USTRUCT(BlueprintType)
 struct FDifficultySettings
 {
@@ -44,6 +41,12 @@ struct FDifficultySettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Tank")
 	float AITankAimAccuracy = 15.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Tank")
+	float AITankPreferredDistance = 500.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Tank")
+	float AITankDistanceTolerance = 100.0f;
+
 	// Tower
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tower")
 	float TowerHealth = 80.0f;
@@ -59,6 +62,17 @@ struct FDifficultySettings
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tower")
 	float TowerFireRange = 900.0f;
+
+	// Projectile
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile")
+	float ProjectileSpeed = 1500.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile")
+	float ProjectileLifespan = 3.0f;
+
+	// 0 = no gravity, 1 = normal gravity
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile")
+	float ProjectileGravityScale = 0.0f;
 };
 
 /**

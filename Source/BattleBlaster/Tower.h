@@ -23,10 +23,7 @@ public:
 
 	void SetTowerEnabled(bool bEnabled);
 	void ResetFireTimer();
-
-	// Target reference (set by GameMode)
-	UPROPERTY()
-	TObjectPtr<ATank> Tank;
+	void SetPlayerTarget(ATank* InTarget);
 
 	// Combat
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
@@ -40,10 +37,14 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
+	TWeakObjectPtr<ATank> PlayerTankWeak;
+	
 	bool bIsEnabled = false;
 	FTimerHandle FireTimerHandle;
 
 	void TryFire();
 	bool IsInRange() const;
-	bool HasLineOfSight() const; // Check if player is visible (no walls blocking)
+	bool HasLineOfSight() const;
+	
+	ATank* GetPlayerTank() const;
 };

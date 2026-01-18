@@ -11,20 +11,33 @@ AProjectile::AProjectile()
 
 	ProjectileMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ProjectileMesh"));
 	SetRootComponent(ProjectileMesh);
+	ProjectileMesh->SetNotifyRigidBodyCollision(true);
+	ProjectileMesh->SetGenerateOverlapEvents(false);
 
 	MovementComp = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("MovementComp"));
-	MovementComp->InitialSpeed = 1500.0f;
-	MovementComp->MaxSpeed = 1500.0f;
+	MovementComp->InitialSpeed = 1400.0f;
+	MovementComp->MaxSpeed = 1400.0f;
+	MovementComp->ProjectileGravityScale = 0.0f;
 
 	TrailParticles = CreateDefaultSubobject<UNiagaraComponent>(TEXT("TrailParticles"));
 	TrailParticles->SetupAttachment(RootComponent);
 
-	InitialLifeSpan = 3.0f;
+	InitialLifeSpan = 1.0f;
 }
 
 void AProjectile::BeginPlay()
 {
 	Super::BeginPlay();
+
+	SpawnLocation = GetActorLocation();
+
+	// Clamp lifespan to max travel distance
+	if (MaxTravelDistance > 0.0f && MovementComp)
+	{
+		const float Speed = FMath::Max(MovementComp->InitialSpeed, 1.0f);
+		const float RangeLife = FMath::Clamp(MaxTravelDistance / Speed, 0.05f, 30.0f);
+		SetLifeSpan(FMath::Min(GetLifeSpan(), RangeLife));
+	}
 
 	if (ProjectileMesh)
 	{
@@ -42,15 +55,19 @@ void AProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
 {
 	const AActor* MyOwner = GetOwner();
 
-	if (MyOwner && OtherActor && OtherActor != MyOwner && OtherActor != this)
+	// Valid hit on another actor
+	if (OtherActor && OtherActor != MyOwner && OtherActor != this)
 	{
-		UGameplayStatics::ApplyDamage(
-			OtherActor,
-			Damage,
-			MyOwner->GetInstigatorController(),
-			this,
-			UDamageType::StaticClass()
-		);
+		if (MyOwner)
+		{
+			UGameplayStatics::ApplyDamage(
+				OtherActor,
+				Damage,
+				MyOwner->GetInstigatorController(),
+				this,
+				UDamageType::StaticClass()
+			);
+		}
 
 		if (ImpactEffect)
 		{
@@ -70,11 +87,10 @@ void AProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
 			{
 				if (APlayerController* PC = World->GetFirstPlayerController())
 				{
-					bool bShake = false;
-					if (OtherActor == PC->GetPawn()) bShake = true;
-					if (MyOwner->GetInstigatorController() == PC) bShake = true;
+					const bool bPlayerHit = (OtherActor == PC->GetPawn());
+					const bool bPlayerFired = (MyOwner && MyOwner->GetInstigatorController() == PC);
 
-					if (bShake)
+					if (bPlayerHit || bPlayerFired)
 					{
 						PC->ClientStartCameraShake(HitCameraShakeClass);
 					}

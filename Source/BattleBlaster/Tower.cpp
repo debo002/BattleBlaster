@@ -32,25 +32,38 @@ void ATower::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// Only track player if enabled and tank is alive
+	ATank* Tank = GetPlayerTank();
 	if (bIsEnabled && Tank && Tank->IsAlive() && IsInRange() && HasLineOfSight())
 	{
 		RotateTurret(Tank->GetActorLocation(), DeltaTime);
 	}
 }
 
+void ATower::SetPlayerTarget(ATank* InTarget)
+{
+	PlayerTankWeak = InTarget;
+}
+
+ATank* ATower::GetPlayerTank() const
+{
+	return PlayerTankWeak.Get();
+}
+
 void ATower::TryFire()
 {
 	if (!bIsEnabled) return;
+	
+	ATank* Tank = GetPlayerTank();
 	if (!Tank || !Tank->IsAlive()) return;
 	if (!IsInRange()) return;
-	if (!HasLineOfSight()) return; // Don't shoot through walls
+	if (!HasLineOfSight()) return;
 
 	Fire();
 }
 
 bool ATower::IsInRange() const
 {
+	ATank* Tank = GetPlayerTank();
 	if (!Tank) return false;
 
 	const float DistSq = FVector::DistSquared(GetActorLocation(), Tank->GetActorLocation());
@@ -59,30 +72,26 @@ bool ATower::IsInRange() const
 
 bool ATower::HasLineOfSight() const
 {
+	ATank* Tank = GetPlayerTank();
 	if (!Tank) return false;
 
-	// Trace from turret to player tank
 	FVector Start = GetActorLocation();
-	Start.Z += 60.0f;  // Offset up from base
+	Start.Z += 60.0f;
 	
 	FVector End = Tank->GetActorLocation();
-	End.Z += 60.0f;  // Target player center
+	End.Z += 60.0f;
 
 	FHitResult Hit;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(this);
 	Params.AddIgnoredActor(Tank);
 
-	// Use WorldStatic channel to detect walls/obstacles
-	bool bHitSomething = GetWorld()->LineTraceSingleByObjectType(
-		Hit,
-		Start,
-		End,
+	const bool bHitSomething = GetWorld()->LineTraceSingleByObjectType(
+		Hit, Start, End,
 		FCollisionObjectQueryParams(ECC_WorldStatic),
 		Params
 	);
 
-	// Clear line of sight if we didn't hit anything
 	return !bHitSomething;
 }
 
